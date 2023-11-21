@@ -1,0 +1,480 @@
+---
+title: "Logit Regression - Influencing Factors in the Adoption of the Agroforestry System"
+author: "Erlangga"
+date: "6/30/2023"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+# Defining data
+mydata <- read.csv("Logistik regression.csv", header = TRUE, sep = ",")
+
+head(mydata)
+```
+Variable description:
+
+Dependent variable
+
+- Ag_Mn represents Agroforestry or Monoculture of respondents with binary value
+
+Independent variables:
+
+- AGE represents age of respondents with scale value (1-4)
+- GEN represents gender of respondents with binary (1-0)
+- FST represents family status of respondents with binary (1-0)
+- FEX represents farming experience of respondents with scale value (1-4)
+- EDU represents age of respondents with scale value (0 - 4)
+- FMM represents age of respondents with numeric value
+- LSZ represents age of respondents with scale value (1 - 4)
+- FGS represents farmer group status of respondents with binary value (1:0)
+- RDCS represents role of decision making of respondents with binary value (1:0)
+- FIN represents family income of respondents with numeric value
+- DST represents distance to the field of respondents with scale value (1-6)
+
+
+```{r}
+# Covert type of variables to suitable type (numeric and factor)
+
+mydata$AGE <- as.factor(mydata$AGE)
+mydata$GEN <- as.factor(mydata$GEN)
+mydata$FEX <- as.factor(mydata$FEX)
+mydata$EDU <- as.factor(mydata$EDU)
+mydata$FST <- as.factor(mydata$FST)
+mydata$FMM <- as.numeric(mydata$FM)
+mydata$LSZ <- as.factor(mydata$LSZ)
+mydata$FGS <- as.factor(mydata$FGS)
+mydata$FDR <- as.factor(mydata$FDR)
+mydata$FIN <- as.factor(mydata$FIN)
+mydata$DST <- as.factor(mydata$DST)
+```
+
+### Stepwise regression in R
+There are some methods to analyze multiple logistic regression. First, a stepwise procedure following the step function can describe multiple logistic regression. The stepwise procedure function selects models by minimizing AIC, not based on p-values, as in the SAS example in the Logistic Procedure.
+
+```{r}
+#  Define null and full models and do step procedure
+
+model.null = glm(Ag_Mn ~ 1, data=mydata,
+                 family = binomial())
+
+model.full <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM + LSZ 
+                  + FGS + FDR + FIN + DST, data = mydata, family = "binomial")
+
+step(model.null,
+     scope = list(upper=model.full),
+             direction="both",
+             test="Chisq",
+             data=mydata)
+```
+
+### Result Stepwise regression in R
+
+Based on the step wise procedure the best model from the list variables is **Ag_Mn ~ FEX + LSZ + FIN + DST + EDU**.
+Here is the result:
+
+```{r include=FALSE}
+library(car)
+```
+
+```{r}
+model.stepwise <- glm(Ag_Mn ~ FEX + LSZ + FIN + DST + EDU, data = mydata, family = "binomial")
+summary(model.stepwise)
+
+Anova(model.stepwise, type="II", test="Wald")
+```
+### Pseudo-R-squared
+
+```{r include=FALSE}
+#install.packages("rcompanion")
+library(rcompanion)
+```
+
+```{r}
+nagelkerke(model.stepwise)
+```
+
+```{r}
+efronRSquared(model.stepwise)
+```
+```{r}
+countRSquare(model.stepwise)
+```
+
+```{r}
+#Odd ratio model stepwise
+exp(model.stepwise$coefficients)
+```
+
+
+```{r}
+anova(model.stepwise,
+      model.null,
+      test="Chisq")
+```
+
+```{r}
+countRSquare(model.stepwise)
+```
+
+
+```{r include=FALSE}
+library(MASS)
+library(lmtest)
+```
+
+
+```{r}
+# Run the test data through the model
+
+run_mydata <- predict(model.stepwise, mydata,type = "response")
+run_mydata
+
+# Validate the model - Conf
+confmatrix.stepwise <- table(Actual_value=mydata$Ag_Mn, Predicted_value = run_mydata >0.5)
+confmatrix.stepwise
+
+# Accuracy
+(confmatrix.stepwise[[1,1]]) + confmatrix.stepwise[[2,2]] / sum(confmatrix.stepwise)
+```
+
+```{r}
+lrtest(model.stepwise)
+```
+
+
+```{r}
+plot(fitted(model.stepwise),
+     rstandard(model.stepwise))
+```
+
+### Alternative Procedure Determining Models:  Using compare.glm
+
+First, we have to determine models based on the list of variables provided. There are 12 variables that will be estimated using logistic regression.
+We define 13 models to be compared, including a model from step wise model from the previous step.
+
+The compare.glm function will display AIC, AICc, BIC, and pseudo R-squared for every glm model. All models should be fit to the same data.
+compare.glm is purposed to simplify the comparison with the fewer term in the final model if the analyst don’t have any preference on which fit statistic to use (AICc, or BIC). However, a series of models can be analyzed using the standard ANOVA function. Models in the ANOVA function should be sequentially ordered or nested in the list and based on the same data.
+
+In the following scripts, the models chosen with the stepwise procedure are compared. The result shows that that model stepwise minimizes AIC, AICc, and BIC. The value of AIC, AICc, and BIC is not totally useful because the ANOVA results suggest that model stepwise is not significant compared to model 12. These results support selecting any of models 12, or 8 as an alternative stepwise model. 
+
+The designed model can be seen below:
+
+```{r}
+#Define Model to compare
+model_null <- glm(Ag_Mn ~ 1, data=mydata,
+                 family = binomial())
+
+model_2 <- glm(Ag_Mn ~ AGE, data=mydata,
+                 family = binomial())
+
+model_3 <- glm(Ag_Mn ~ AGE + FEX, data = mydata, 
+               family = "binomial")
+
+model_4 <- glm(Ag_Mn ~ AGE + FEX + GEN, data = mydata, 
+               family = "binomial")
+
+model_5 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU, data = mydata, 
+               family = "binomial")
+
+model_6 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST, data = mydata, 
+               family = "binomial")
+
+model_7 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM, 
+               data = mydata, family = "binomial")
+
+model_8 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM + LSZ, 
+               data = mydata, family = "binomial")
+
+model_9 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM + LSZ + FGS, 
+               data = mydata, family = "binomial")
+
+model_10 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM + LSZ + FGS + FDR, 
+                data = mydata, family = "binomial")
+
+model_11 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM + LSZ + FGS + FDR
+                + FIN , data = mydata, family = "binomial")
+
+model_12 <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM + LSZ + FGS + FDR 
+                + FIN + DST, data = mydata, family = "binomial")
+
+model_stepwise <- glm(Ag_Mn ~ FEX + LSZ + FIN + DST + EDU, data = mydata, family = "binomial")
+
+model_null
+model_2
+model_3
+model_4
+model_5
+model_6
+model_7
+model_8
+model_9
+model_10
+model_11
+model_12
+model_stepwise
+```
+
+```{r}
+# Using compare.GLM to assess model statistics
+
+compareGLM(model_null, model_2, model_3, model_4, model_5, model_6,
+           model_7, model_8, model_9, model_10, model_11, model_12, model_stepwise)
+```
+
+
+```{r}
+# Using ANOVA to compare each model to the previous comparison
+anova(model_null, model_2, model_3, model_4, model_5, model_6,
+      model_7, model_8, model_9, model_10, model_11,  model_12, model_stepwise, test="Chisq")
+```
+
+```{r}
+# Using ANOVA to compare each model to the previous comparison
+anova(model_8,  model_11, test="Chisq")
+anova(model_11,  model_12, test="Chisq")
+```
+
+Based on glm regression result, adding more variables in Model 2 compared to Model 1 leads to varying estimation values that will affect the outcome of the statistical test. These factors include having farming experience ranging from 10 to 20 years and 20 to 30 years, owning a land size of 1 to 2 hectares and 2 to 3 hectares, and earning a monthly family income of USD133.3 – 266.6, USD266.6 – 400, USD400 – 533.3 and more than $533.3 . In addition, factors that negatively impact the adoption of agroforestry system include the distance between the farm and the farmer's house, specifically when the farm is located at distances of 3-4 km, 5-6 km, and ≥ 6 km.
+
+Farmers with 10-20 years of farming experience are 9 times more likely to adopt agroforestry than farmers with less than 10 years of farming experience. The odds of adopting agroforestry are 11 times higher if the farmer owns a land size of 2 to 3 hectares than if they own less than 1 hectare. Farmers with a monthly family income between USD400 – 533.3 have a 26 times higher probability of adopting agroforestry compared to those with a monthly family income of less than USD133.3. While farmers with a monthly family income of more than USD533.3 have a 4 times higher probability of adopting agroforestry compared to those with a monthly family income of less than $133.3. The probability of adopting agroforestry decreases by 94% when the farm is located between 3 to 4 km, compared to being within a distance of 1 km or less. However, the additional variables included such as age gender, farmers’ group status, family members, and farming decision role in Model 2 are not significant. 
+
+
+```{r}
+# Model 12 as  an alternative final model
+
+final.model <- glm(Ag_Mn ~ AGE + FEX + GEN + EDU + FST + FMM + LSZ + 
+                     FGS + FDR + FIN + DST, data = mydata, family = binomial(link="logit"),
+                  na.action(na.omit))
+
+summary(final.model)
+```
+
+```{r}
+# Producing Odd Ratio Final Model
+
+exp(final.model$coefficients)
+```
+
+The following script showed the predicted value and actual value choosing 1 or 0. Additionally, the accuracy of the model accounted for 67% based on the result.
+
+```{r}
+# Run the test data through the model
+
+run_mydata <- predict(final.model, mydata,type = "response")
+run_mydata
+
+# Validate the model - Conf
+confmatrix <- table(Actual_value=mydata$Ag_Mn, Predicted_value = run_mydata >0.5)
+confmatrix
+
+# Accuracy
+(confmatrix[[1,1]]) + confmatrix[[2,2]] / sum(confmatrix)
+```
+
+To evaluate the goodness of fit of the logistic regression model, calculating Nagelkerke's R squared from the result of glm(). The Nagelkerke's R squared means the power of explanation of the model. Based on the negelkerke result, the model is not perfectly explained the outcome because the value is 0.2 out of 0 to 1 scale.However,First, the model not only rely on pseudo-R-square values as an indicator of model suitability for a logistic regression model. There are three reasons: (a) the value does not truly represent variance accounted for (as in OLS regression); (b) context matters the variables involved, the target population, the perspective of the decision-maker, and the intended use(s) of the model; and (c) people often choose to focus on odds ratio estimates and/or the classification accuracies. In this context odds ratio and classification accuracy or information within the context will be interpreted for the research objective.
+
+```{r}
+nagelkerke(final.model)
+```
+
+
+```{r}
+efronRSquared(final.model)
+```
+```{r}
+countRSquare(final.model)
+```
+
+
+```{r}
+anova(final.model, test="Chisq")
+```
+
+### Summary variable in the final model (Model 12)
+
+Based on the result of logistic regression, distance to the field (DST) was strongly influenced the farmer to implement agroforestry system. The pr(>|z|) is 0.000458, which is significant under alpha 0.001. The coefficient value of DST is -0.3355, which means more far farmer to access the field, the preference to implement agroforestry is less preferred. Variable distance to the field become the most significant variable influenced the farmer to implement agroforestry system because they realized that they are many uncertainties in the field if it is located quite far from where they live. For example, the fruit trees maybe be stolen, or it is quite hard to maintain regularly.
+
+Family income and gender also weakly influenced the farmer to implement agroforestry system, even though the significant level is only under alpha 10%. Family income and gender have positive coefficients that if the family income level increases, the farmer's probability of implementing agroforestry is also higher. While if the farmer is male, the probability farmer to implement agroforestry is lower. Contrary, if the farmer is female, the probability of implementing agroforestry is higher.
+
+The remaining variables have positive coefficient values except farming experience (FE). This indicates that more longer the respondent is a farmer, the probability farmer to shift monoculture to agroforestry is lower.
+
+```{r}
+ggplot(mydata, aes(x = FIN, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = TRUE)
+```
+
+```{r}
+ggplot(final.model, aes(x = GEN, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = FALSE)
+```
+
+```{r}
+ggplot(final.model, aes(x = DST, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = TRUE)
+```
+
+```{r}
+ggplot(model.full, aes(x = EDU, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .5) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = TRUE)
+```
+
+```{r}
+ggplot(model.full, aes(x = FMM, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = FALSE)
+```
+
+```{r}
+ggplot(model.full, aes(x = FGS, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = FALSE)
+```
+
+```{r}
+ggplot(model.full, aes(x = LSZ, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = TRUE)
+```
+
+```{r}
+ggplot(model.full, aes(x = AGE, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = TRUE)
+```
+
+```{r}
+ggplot(final.model, aes(x = FEX, y = Ag_Mn)) +
+  geom_jitter(height = .05 , alpha = .4) +
+  geom_smooth(method = "glm",
+              method.args = list(family = "binomial"), se = TRUE)
+```
+
+```{r}
+#Displaying Proportion each Variable
+
+FI_mydata <- mydata %>% 
+  group_by(FIN) %>% 
+  summarize(prop_Ag_Mn = mean(Ag_Mn),
+            count = n())
+
+ggplot(FI_mydata, aes(x= FIN,
+                     y= prop_Ag_Mn)) +
+  geom_point() + 
+  geom_smooth(method = "glm",
+              se = TRUE,
+              method.args = list(family = "binomial"))
+
+prop_FI <- glm(prop_Ag_Mn  ~ FIN, family = "binomial",
+             data = FI_mydata,
+             weights = count)
+
+summary(prop_FI)
+```
+
+```{r}
+EL_mydata <- mydata %>% 
+  group_by(EDU) %>% 
+  summarize(prop_Ag_Mn = mean(Ag_Mn),
+            count = n())
+
+ggplot(EL_mydata, aes(x= EDU,
+                     y= prop_Ag_Mn)) +
+  geom_point() + 
+  geom_smooth(method = "glm",
+              se = TRUE,
+              method.args = list(family = "binomial"))
+
+prop_EL <- glm(prop_Ag_Mn  ~ EDU, family = "binomial",
+             data = EL_mydata,
+             weights = count)
+
+summary(prop_EL)
+```
+
+
+```{r}
+LS_mydata <- mydata %>% 
+  group_by(LSZ) %>% 
+  summarize(prop_Ag_Mn = mean(Ag_Mn),
+            count = n())
+
+ggplot(LS_mydata, aes(x= LSZ,
+                     y= prop_Ag_Mn)) +
+  geom_point() + 
+  geom_smooth(method = "glm",
+              se = T,
+              method.args = list(family = "binomial"))
+
+prop_LS <- glm(prop_Ag_Mn  ~ LSZ, family = "binomial",
+             data = LS_mydata,
+             weights = count)
+
+summary(prop_LS)
+```
+
+```{r}
+FE_mydata <- mydata %>% 
+  group_by(FEX) %>% 
+  summarize(prop_Ag_Mn = mean(Ag_Mn),
+            count = n())
+
+ggplot(FE_mydata, aes(x= FEX,
+                     y= prop_Ag_Mn)) +
+  geom_point() + 
+  geom_smooth(method = "glm",
+              se = TRUE,
+              method.args = list(family = "binomial"))
+
+prop_FE <- glm(prop_Ag_Mn  ~ FEX, family = "binomial",
+             data = FE_mydata,
+             weights = count)
+
+summary(prop_FE)
+```
+
+```{r}
+DST_mydata <- mydata %>% 
+  group_by(DST) %>% 
+  summarize(prop_Ag_Mn = mean(Ag_Mn),
+            count = n())
+
+ggplot(DST_mydata, aes(x= DST,
+                     y= prop_Ag_Mn)) +
+  geom_point() + 
+  geom_smooth(method = "glm",
+              se = FALSE,
+              method.args = list(family = "binomial"))
+
+prop_DST <- glm(prop_Ag_Mn  ~ DST, family = "binomial",
+             data = DST_mydata,
+             weights = count)
+
+summary(prop_DST)
+```
+
+
