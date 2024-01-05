@@ -36,9 +36,9 @@ Independent variables:
 - GEN represents gender of respondents with binary (1-0)
 - FST represents family status of respondents with binary (1-0)
 - FEX represents farming experience of respondents with scale value (1-4)
-- EDU represents age of respondents with scale value (0 - 4)
-- FMM represents age of respondents with numeric value
-- LSZ represents age of respondents with scale value (1 - 4)
+- EDU represents education level of respondents with scale value (0 - 4)
+- FMM represents family members of respondents with numeric value
+- LSZ represents land size of respondents with scale value (1 - 4)
 - FGS represents farmer group status of respondents with binary value (1:0)
 - RDCS represents role of decision making of respondents with binary value (1:0)
 - FIN represents family income of respondents with numeric value
