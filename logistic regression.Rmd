@@ -303,14 +303,6 @@ countRSquare(final.model)
 anova(final.model, test="Chisq")
 ```
 
-### Summary variable in the final model (Model 12)
-
-Based on the result of logistic regression, distance to the field (DST) was strongly influenced the farmer to implement agroforestry system. The pr(>|z|) is 0.000458, which is significant under alpha 0.001. The coefficient value of DST is -0.3355, which means more far farmer to access the field, the preference to implement agroforestry is less preferred. Variable distance to the field become the most significant variable influenced the farmer to implement agroforestry system because they realized that they are many uncertainties in the field if it is located quite far from where they live. For example, the fruit trees maybe be stolen, or it is quite hard to maintain regularly.
-
-Family income and gender also weakly influenced the farmer to implement agroforestry system, even though the significant level is only under alpha 10%. Family income and gender have positive coefficients that if the family income level increases, the farmer's probability of implementing agroforestry is also higher. While if the farmer is male, the probability farmer to implement agroforestry is lower. Contrary, if the farmer is female, the probability of implementing agroforestry is higher.
-
-The remaining variables have positive coefficient values except farming experience (FE). This indicates that more longer the respondent is a farmer, the probability farmer to shift monoculture to agroforestry is lower.
-
 ```{r}
 ggplot(mydata, aes(x = FIN, y = Ag_Mn)) +
   geom_jitter(height = .05 , alpha = .4) +
